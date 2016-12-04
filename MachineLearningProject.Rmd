@@ -1,0 +1,102 @@
+---
+title: "Final project week 4"
+author: "Armin Boonstra"
+date: "04/12/2016"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Introduction
+This report is part of a Coursera Course:  Practical Machine Learning. 
+
+The data comes from devices such as Jawbone Up, Nike FuelBand, and Fitbit and contains information  personal activity. The data concerns people performing barbell lifts correctly and incorrectly in 5 different ways.
+
+The aim of this report is to build a prediction model that can predict the manner in which people performed these activities.
+
+## Setting up
+
+```{r setup, message=FALSE, warning=FALSE}
+library(rpart)
+library(caret)
+library(gbm)
+library(AppliedPredictiveModeling)
+
+rm(list=ls())
+set.seed(123)
+```
+
+
+## Reading data
+```{r }
+training <-read.csv('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv', na.strings=c('NA','','#DIV/0!'))
+testing <- read.csv('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv', na.strings=c('NA','','#DIV/0!'))
+```
+
+##Shrink data
+I followed s few steps in:
+https://www.kaggle.com/forums/f/15/kaggle-forum/t/23243/how-to-do-data-preparation-for-random-forest-classifier
+Remove columns with more than 80% NA:
+```{r}
+training <- training[,colSums(is.na(training))<0.8*nrow(training)]
+dim(training)
+```
+
+Remove first 6 columns as they look to contain ID data
+```{r}
+training <- training[,-(1:6)]
+```
+
+Check for near zero variance variables
+```{r}
+nzv <- nearZeroVar(training)
+nzv
+```
+
+Doesnt give any results
+
+## Dataset to use and value we are trying to predict
+```{r}
+dim(training)
+unique(training$classe)
+```
+
+Split data into training and testing (as the testing set of 20 observations can be qualified as a 'quiz' set rather than a testing set.)
+```{r}
+sub <- createDataPartition(y=training$classe, p=0.7, list=FALSE)
+Training_subset <- training[sub, ] 
+Testing_subset <- training[-sub, ]
+```
+
+# first effort: decision tree
+```{r}
+modDT <- rpart(classe ~., data=Training_subset, method="class")
+predDT <-predict(modDT, Testing_subset, type = "class")
+confusionMatrix(predDT, Testing_subset$classe)
+```
+
+The decision tree gives an accuracy of 83%.
+The expetced out of sample error is 20/(1-83%) = 3.4.
+
+# second effort: random forest
+```{r}
+modRF <- train(classe~. , data = Training_subset, method="rf")
+predRF <- predict(modRF, Testing_subset)
+confusionMatrix(predRF, Testing_subset$classe)
+```
+
+The random forest accuracy is 99,8%.
+The expected out of sample error is 20 * (0.002), so at most 1.
+
+## Quiz answers
+Seeing as the random forest gives the required accuracy, that's what we're using for the quiz.
+
+```{r}
+answers <- predict(modRF, testing)
+answers
+```
+
+
+
+
+
